@@ -26,3 +26,15 @@ dist-ssr
 *.sw?
 
 testsprite_tests\tmp\config.json
+
+# Exclude database migrations and schemas
+*.sql
+
+# Exclude large documentation files
+*.docx
+*.pdf
+
+# Exclude Google services credentials/configs
+google-services*.json
+google-services (zapkart-customer).json
+
