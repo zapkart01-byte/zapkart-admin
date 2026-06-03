@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "557073603104",
+    "project_id": "zapkart-app",
+    "storage_bucket": "zapkart-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:557073603104:android:45f3de597d770f61627a45",
+        "android_client_info": {
+          "package_name": "com.zapkart.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0qRu5q2AgC42yNe8c3wUFWe1XDTG2Lz4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:557073603104:android:87de6d4698c63369627a45",
+        "android_client_info": {
+          "package_name": "com.zapkart.rider"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0qRu5q2AgC42yNe8c3wUFWe1XDTG2Lz4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:557073603104:android:3b02db40ea5de313627a45",
+        "android_client_info": {
+          "package_name": "com.zapkart.store"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0qRu5q2AgC42yNe8c3wUFWe1XDTG2Lz4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
