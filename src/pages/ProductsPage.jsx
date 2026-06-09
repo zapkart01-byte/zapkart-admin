@@ -59,6 +59,7 @@ export default function ProductsPage() {
   const [productMrp, setProductMrp] = useState('')
   const [productPrice, setProductPrice] = useState('')
   const [productStock, setProductStock] = useState('10')
+  const [productCostPrice, setProductCostPrice] = useState('')
 
   const searchDebounce = useRef(null)
 
@@ -143,6 +144,7 @@ export default function ProductsPage() {
     setProductMrp('')
     setProductPrice('')
     setProductStock('10')
+    setProductCostPrice('')
     setShowCreateModal(true)
   }
 
@@ -170,6 +172,7 @@ export default function ProductsPage() {
         platform_mrp: mrp,
         store_price: price,
         stock: Number(productStock) || 0,
+        cost_price: Number(productCostPrice) || 0,
       })
       toast.success('Product created successfully')
       setShowCreateModal(false)
@@ -305,12 +308,13 @@ export default function ProductsPage() {
         <>
           <div className="bg-white rounded-xl border border-border overflow-hidden shadow-sm" data-testid="products-list">
             {/* Desktop header */}
-            <div className="hidden lg:grid grid-cols-[2fr_1.2fr_1fr_0.8fr_0.8fr_0.6fr_0.6fr_100px] gap-3 px-5 py-3 bg-surface border-b border-border text-xs font-semibold text-secondary uppercase tracking-wide">
+            <div className="hidden lg:grid grid-cols-[2fr_1fr_0.8fr_0.7fr_0.7fr_0.7fr_0.5fr_0.5fr_90px] gap-3 px-5 py-3 bg-surface border-b border-border text-xs font-semibold text-secondary uppercase tracking-wide">
               <span>Product</span>
               <span>Store</span>
               <span>Category</span>
               <span>MRP</span>
               <span>Store Price</span>
+              <span>Payout</span>
               <span>Stock</span>
               <span>Status</span>
               <span>Actions</span>
@@ -437,6 +441,15 @@ export default function ProductsPage() {
             min="0"
             disabled={formLoading}
           />
+          <Input
+            type="number"
+            label="Cost Price (₹)"
+            value={productCostPrice}
+            onChange={(e) => setProductCostPrice(e.target.value)}
+            min="0"
+            disabled={formLoading}
+            placeholder="Optional — for profit calculation"
+          />
           <div className="flex gap-2 pt-2 border-t border-border">
             <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)} disabled={formLoading} className="flex-1">
               Cancel
@@ -473,12 +486,12 @@ function ProductRow({ product, onFlag, onDeactivate }) {
       }`}
     >
       {/* Desktop row */}
-      <div className="hidden lg:grid grid-cols-[2fr_1.2fr_1fr_0.8fr_0.8fr_0.6fr_0.6fr_100px] gap-3 px-5 py-3.5 items-center">
+      <div className="hidden lg:grid grid-cols-[2fr_1fr_0.8fr_0.7fr_0.7fr_0.7fr_0.5fr_0.5fr_90px] gap-3 px-5 py-3.5 items-center">
         {/* Product name + image */}
         <div className="flex items-center gap-3 min-w-0">
-          {product.image_url ? (
+          {(product.image_url || product.image_urls?.[0]) ? (
             <img
-              src={product.image_url}
+              src={product.image_url || product.image_urls[0]}
               alt={product.name}
               className="w-9 h-9 rounded-lg object-cover border border-border shrink-0"
             />
@@ -518,6 +531,18 @@ function ProductRow({ product, onFlag, onDeactivate }) {
           )}
           {discountPct > 0 && !isMRPViolation && (
             <p className="text-xs text-green-600">{discountPct}% off</p>
+          )}
+        </div>
+
+        {/* Payout / Profit */}
+        <div>
+          <span className={`text-sm font-semibold text-green-600`}>
+            {formatCurrency(Number(product.store_price) * 0.82)}
+          </span>
+          {Number(product.cost_price) > 0 && (
+            <p className="text-xs text-secondary">
+              Profit: {formatCurrency(Number(product.store_price) * 0.82 - Number(product.cost_price))}
+            </p>
           )}
         </div>
 
@@ -564,8 +589,8 @@ function ProductRow({ product, onFlag, onDeactivate }) {
       {/* Mobile card */}
       <div className="lg:hidden px-4 py-3 space-y-2">
         <div className="flex items-start gap-3">
-          {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-border shrink-0" />
+          {(product.image_url || product.image_urls?.[0]) ? (
+            <img src={product.image_url || product.image_urls[0]} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-border shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center shrink-0">
               <Package className="w-4 h-4 text-secondary" />
@@ -598,6 +623,12 @@ function ProductRow({ product, onFlag, onDeactivate }) {
             <p className={`text-sm font-semibold ${isMRPViolation ? 'text-red-600' : 'text-on-surface'}`}>
               {formatCurrency(product.store_price)}
               {isMRPViolation && ' ⚠️'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-secondary">Payout</p>
+            <p className="text-sm font-semibold text-green-600">
+              {formatCurrency(Number(product.store_price) * 0.82)}
             </p>
           </div>
           <div>

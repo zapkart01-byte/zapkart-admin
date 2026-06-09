@@ -1,21 +1,21 @@
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-} from 'firebase/auth'
-import { auth } from './firebase'
 import { supabase } from './supabase'
 
 /**
  * ZapKart Admin Authentication Service
- * Uses Firebase email/password auth + Supabase admin profile verification.
+ * Uses Supabase email/password auth + Supabase admin profile verification.
  */
 
 // Signs in admin with email and password, verifies admin role in Supabase
 export async function loginWithEmail(email, password) {
   const normalizedEmail = email.toLowerCase().trim()
-  const userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password)
-  const user = userCredential.user
+  
+  const { data, error: authError } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  })
+
+  if (authError) throw authError
+  const user = data.user
 
   // Fetches admin profile from Supabase to verify admin role
   const { data: adminProfile, error } = await supabase
@@ -25,33 +25,43 @@ export async function loginWithEmail(email, password) {
     .single()
 
   if (error || !adminProfile) {
-    await signOut(auth)
+    await supabase.auth.signOut()
     throw new Error('Access denied. This email is not registered as an admin.')
   }
 
   return { user, adminProfile }
 }
 
-// Signs out the current admin user from Firebase
+// Signs out the current admin user from Supabase
 export async function logout() {
-  await signOut(auth)
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
 }
 
-// Returns the currently authenticated Firebase user or null
-export function getCurrentUser() {
-  return auth.currentUser
+// Returns the currently authenticated Supabase user or null
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
 }
 
-// Retrieves a fresh Firebase ID token for backend API authorization
+// Retrieves a fresh Supabase access token for backend API authorization
 export async function getIdToken() {
-  const user = auth.currentUser
-  if (!user) throw new Error('No authenticated user')
-  return user.getIdToken(true)
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No authenticated user')
+  return session.access_token
 }
 
-// Subscribes to Firebase auth state changes and invokes callback with user
+// Subscribes to Supabase auth state changes and invokes callback with user
 export function onAuthChange(callback) {
-  return onAuthStateChanged(auth, callback)
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      callback(session?.user || null)
+    }
+  )
+  
+  return () => {
+    subscription.unsubscribe()
+  }
 }
 
 // Fetches the admin profile from Supabase by email address
@@ -66,7 +76,7 @@ export async function fetchAdminProfile(email) {
   return data
 }
 
-// Creates an authenticated fetch wrapper that includes Firebase JWT token
+// Creates an authenticated fetch wrapper that includes Supabase JWT token
 export async function authenticatedFetch(url, options = {}) {
   const token = await getIdToken()
   const apiUrl = import.meta.env.VITE_API_URL
@@ -80,3 +90,4 @@ export async function authenticatedFetch(url, options = {}) {
     },
   })
 }
+

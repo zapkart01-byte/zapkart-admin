@@ -119,6 +119,8 @@ export async function createProduct(productData) {
     store_price: Number(productData.store_price) || 0,
     stock: Number(productData.stock) || 0,
     description: productData.description?.trim() || null,
+    image_urls: productData.image_urls || [],
+    cost_price: Number(productData.cost_price) || 0,
     is_active: true,
     is_flagged: false,
     units_sold_total: 0,
