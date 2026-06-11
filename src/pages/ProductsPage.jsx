@@ -65,19 +65,25 @@ export default function ProductsPage() {
   const [imageReviewLoading, setImageReviewLoading] = useState(true)
   const [imageActionLoading, setImageActionLoading] = useState(null) // productId being actioned
 
+  const [platformSettings, setPlatformSettings] = useState({ platform_markup_per_item: 1 })
+
   const searchDebounce = useRef(null)
 
-  // Loads store and category dropdown options from Supabase
+  // Loads store, category, and platform settings from Supabase
   useEffect(() => {
-    async function loadFilters() {
-      const [{ data: storeData }, { data: catData }] = await Promise.all([
+    async function loadInitialData() {
+      const [{ data: storeData }, { data: catData }, { data: settingsData }] = await Promise.all([
         supabase.from('stores').select('id, store_name').order('store_name'),
         supabase.from('categories').select('id, name').eq('is_active', true).order('sort_order'),
+        supabase.from('platform_settings').select('platform_markup_per_item').single(),
       ])
       setStores(storeData || [])
       setCategories(catData || [])
+      if (settingsData) {
+        setPlatformSettings(settingsData)
+      }
     }
-    loadFilters()
+    loadInitialData()
   }, [])
 
   // Fetches products that have custom images uploaded by stores (for moderation)
@@ -469,13 +475,13 @@ export default function ProductsPage() {
         <>
           <div className="bg-white rounded-xl border border-border overflow-hidden shadow-sm" data-testid="products-list">
             {/* Desktop header */}
-            <div className="hidden lg:grid grid-cols-[2fr_1fr_0.8fr_0.7fr_0.7fr_0.7fr_0.5fr_0.5fr_90px] gap-3 px-5 py-3 bg-surface border-b border-border text-xs font-semibold text-secondary uppercase tracking-wide">
+            <div className="hidden lg:grid grid-cols-[1.8fr_1fr_0.8fr_0.6fr_0.6fr_1.5fr_0.5fr_0.5fr_90px] gap-3 px-5 py-3 bg-surface border-b border-border text-xs font-semibold text-secondary uppercase tracking-wide">
               <span>Product</span>
               <span>Store</span>
               <span>Category</span>
               <span>MRP</span>
               <span>Store Price</span>
-              <span>Payout</span>
+              <span>Payout / Profits</span>
               <span>Stock</span>
               <span>Status</span>
               <span>Actions</span>
@@ -486,6 +492,7 @@ export default function ProductsPage() {
                 <ProductRow
                   key={product.id}
                   product={product}
+                  platformSettings={platformSettings}
                   onFlag={() => setConfirmAction({ type: 'flag', product })}
                   onDeactivate={() => setConfirmAction({ type: 'deactivate', product })}
                 />
@@ -628,13 +635,21 @@ export default function ProductsPage() {
 // ─── Product Row ──────────────────────────────────────────────────────────────
 
 // Renders a single product row — red-highlighted when store_price exceeds platform_mrp
-function ProductRow({ product, onFlag, onDeactivate }) {
+function ProductRow({ product, platformSettings, onFlag, onDeactivate }) {
   const isMRPViolation = Number(product.store_price) > Number(product.platform_mrp)
   const isFlagged = product.is_flagged
   const isInactive = !product.is_active
   const discountPct = product.platform_mrp > 0
     ? Math.round((product.platform_mrp - product.store_price) / product.platform_mrp * 100)
     : 0
+
+  // Calculate actual payouts and profits
+  const commRate = Number(product.categories?.commission_rate !== undefined ? product.categories.commission_rate : 0.18)
+  const storePayout = Number(product.store_price || 0) * (1 - commRate)
+  const storeProfit = storePayout - Number(product.cost_price || 0)
+  
+  const markup = Math.min(Number(product.store_price || 0) + Number(platformSettings?.platform_markup_per_item || 1), Number(product.platform_mrp || 0)) - Number(product.store_price || 0)
+  const zapkartProfit = (Number(product.store_price || 0) * commRate) + markup
 
   return (
     <div
@@ -647,7 +662,7 @@ function ProductRow({ product, onFlag, onDeactivate }) {
       }`}
     >
       {/* Desktop row */}
-      <div className="hidden lg:grid grid-cols-[2fr_1fr_0.8fr_0.7fr_0.7fr_0.7fr_0.5fr_0.5fr_90px] gap-3 px-5 py-3.5 items-center">
+      <div className="hidden lg:grid grid-cols-[1.8fr_1fr_0.8fr_0.6fr_0.6fr_1.5fr_0.5fr_0.5fr_90px] gap-3 px-5 py-3.5 items-center">
         {/* Product name + image */}
         <div className="flex items-center gap-3 min-w-0">
           {(product.image_url || product.image_urls?.[0]) ? (
@@ -695,16 +710,26 @@ function ProductRow({ product, onFlag, onDeactivate }) {
           )}
         </div>
 
-        {/* Payout / Profit */}
-        <div>
-          <span className={`text-sm font-semibold text-green-600`}>
-            {formatCurrency(Number(product.store_price) * 0.82)}
-          </span>
+        {/* Payout / Profit detailed cards */}
+        <div className="flex flex-col gap-0.5 text-xs bg-slate-50/50 p-1.5 rounded-lg border border-slate-100">
+          <div className="flex justify-between gap-1.5">
+            <span className="text-secondary text-[11px]">Store Payout:</span>
+            <span className="font-semibold text-green-600 text-[11px]">{formatCurrency(storePayout)}</span>
+          </div>
           {Number(product.cost_price) > 0 && (
-            <p className="text-xs text-secondary">
-              Profit: {formatCurrency(Number(product.store_price) * 0.82 - Number(product.cost_price))}
-            </p>
+            <div className="flex justify-between gap-1.5">
+              <span className="text-secondary text-[11px]">Store Profit:</span>
+              <span className="font-semibold text-green-700 text-[11px]">{formatCurrency(storeProfit)}</span>
+            </div>
           )}
+          <div className="flex justify-between gap-1.5 border-t border-dashed border-border/80 mt-0.5 pt-0.5">
+            <span className="text-secondary text-[11px]">ZapKart Profit:</span>
+            <span className="font-semibold text-blue-600 text-[11px]">{formatCurrency(zapkartProfit)}</span>
+          </div>
+          <div className="flex justify-between gap-1.5 border-t border-dashed border-border/80 mt-0.5 pt-0.5">
+            <span className="text-secondary text-[11px]">Rider Share:</span>
+            <span className="font-semibold text-purple-600 text-[10px]">₹25-50/order</span>
+          </div>
         </div>
 
         {/* Stock */}
@@ -748,7 +773,7 @@ function ProductRow({ product, onFlag, onDeactivate }) {
       </div>
 
       {/* Mobile card */}
-      <div className="lg:hidden px-4 py-3 space-y-2">
+      <div className="lg:hidden px-4 py-3 space-y-3">
         <div className="flex items-start gap-3">
           {(product.image_url || product.image_urls?.[0]) ? (
             <img src={product.image_url || product.image_urls[0]} alt={product.name} className="w-10 h-10 rounded-lg object-cover border border-border shrink-0" />
@@ -774,29 +799,45 @@ function ProductRow({ product, onFlag, onDeactivate }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div>
-            <p className="text-xs text-secondary">MRP</p>
-            <p className="text-sm text-secondary">{formatCurrency(product.platform_mrp)}</p>
+        
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/60">
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="text-secondary">MRP:</span>
+              <span className="font-medium text-on-surface">{formatCurrency(product.platform_mrp)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-secondary">Store Price:</span>
+              <span className={`font-semibold ${isMRPViolation ? 'text-red-600' : 'text-on-surface'}`}>
+                {formatCurrency(product.store_price)}
+                {isMRPViolation && ' ⚠️'}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-secondary">Stock:</span>
+              <span className={`font-medium ${product.stock === 0 ? 'text-red-500' : 'text-on-surface'}`}>{product.stock}</span>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-secondary">Store Price</p>
-            <p className={`text-sm font-semibold ${isMRPViolation ? 'text-red-600' : 'text-on-surface'}`}>
-              {formatCurrency(product.store_price)}
-              {isMRPViolation && ' ⚠️'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-secondary">Payout</p>
-            <p className="text-sm font-semibold text-green-600">
-              {formatCurrency(Number(product.store_price) * 0.82)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-secondary">Stock</p>
-            <p className={`text-sm font-medium ${product.stock === 0 ? 'text-red-500' : 'text-on-surface'}`}>
-              {product.stock}
-            </p>
+          
+          <div className="bg-slate-50/50 rounded-lg p-2 border border-slate-100 space-y-1">
+            <div className="flex justify-between text-[11px]">
+              <span className="text-secondary">Store Payout:</span>
+              <span className="font-semibold text-green-600">{formatCurrency(storePayout)}</span>
+            </div>
+            {Number(product.cost_price) > 0 && (
+              <div className="flex justify-between text-[11px]">
+                <span className="text-secondary">Store Profit:</span>
+                <span className="font-semibold text-green-700">{formatCurrency(storeProfit)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[11px] border-t border-dashed border-border/80 pt-1">
+              <span className="text-secondary">ZapKart Profit:</span>
+              <span className="font-semibold text-blue-600">{formatCurrency(zapkartProfit)}</span>
+            </div>
+            <div className="flex justify-between text-[11px] border-t border-dashed border-border/80 pt-1">
+              <span className="text-secondary">Rider Share:</span>
+              <span className="font-semibold text-purple-600">₹25-50/ord</span>
+            </div>
           </div>
         </div>
       </div>

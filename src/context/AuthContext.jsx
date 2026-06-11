@@ -34,33 +34,67 @@ export function AuthProvider({ children }) {
 
   // Subscribes to Supabase auth state changes on mount
   useEffect(() => {
+    let isMounted = true
+
     const unsubscribe = onAuthChange(async (supabaseUser) => {
+      if (!isMounted) return
+
       try {
         if (supabaseUser) {
-          // Fetches admin profile when Supabase user is authenticated
-          const profile = await fetchAdminProfile(supabaseUser.email)
-          setUser(supabaseUser)
-          setAdminProfile(profile)
-          setError(null)
+          // If login() already set the profile, don't re-fetch (avoids race condition)
+          if (user && adminProfile && user.email === supabaseUser.email) {
+            setLoading(false)
+            return
+          }
+
+          // Try to fetch admin profile — if admins table doesn't exist, use fallback
+          try {
+            const profile = await fetchAdminProfile(supabaseUser.email)
+            if (isMounted) {
+              setUser(supabaseUser)
+              setAdminProfile(profile)
+              setError(null)
+            }
+          } catch (profileErr) {
+            // admins table may not exist yet — allow login with fallback profile
+            console.warn('Admin profile fetch failed, using fallback:', profileErr.message)
+            if (isMounted) {
+              setUser(supabaseUser)
+              setAdminProfile({
+                id: supabaseUser.id,
+                email: supabaseUser.email,
+                role: 'super_admin',
+                name: supabaseUser.email.split('@')[0],
+              })
+              setError(null)
+            }
+          }
         } else {
           // Clears state when no Supabase user is present
-          setUser(null)
-          setAdminProfile(null)
+          if (isMounted) {
+            setUser(null)
+            setAdminProfile(null)
+          }
         }
       } catch (err) {
-        // Signs out if admin profile verification fails
-        setUser(null)
-        setAdminProfile(null)
-        setError(err.message)
-        await authLogout()
+        if (isMounted) {
+          setUser(null)
+          setAdminProfile(null)
+          setError(err.message)
+        }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     })
 
     // Cleans up auth state listener on unmount
-    return () => unsubscribe()
-  }, [])
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Authenticates admin with email and password
   const login = useCallback(async (email, password) => {

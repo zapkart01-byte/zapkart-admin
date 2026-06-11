@@ -11,7 +11,7 @@ import { sendUserNotification } from './notificationService'
 export async function getProducts({ storeId, categoryId, isFlagged, search, page = 1, pageSize = 20 } = {}) {
   let query = supabase
     .from('products')
-    .select('*, stores:store_id(store_name), categories:category_id(name)', { count: 'exact' })
+    .select('*, stores:store_id(store_name), categories:category_id(name, commission_rate)', { count: 'exact' })
     .order('created_at', { ascending: false })
 
   if (storeId) {
