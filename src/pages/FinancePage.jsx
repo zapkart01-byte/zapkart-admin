@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Landmark, LandmarkIcon, Clock, BadgeAlert, Plus, CheckCircle, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react'
+import { Landmark, LandmarkIcon, Clock, BadgeAlert, Plus, CheckCircle, RefreshCw, AlertTriangle, ArrowRight, Sparkles } from 'lucide-react'
 import { getPayouts, updatePayoutStatus, initiateSettlement, getFinanceSummary } from '../services/financeService'
 import { formatCurrency } from '../utils/formatters'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../services/supabase'
 import PayoutCard from '../components/finance/PayoutCard'
 import CODReconciliation from '../components/finance/CODReconciliation'
 import SettlementHistory from '../components/finance/SettlementHistory'
@@ -30,6 +31,7 @@ export default function FinancePage() {
   // KPI state
   const [summary, setSummary] = useState(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
+  const [weeklyDiscount, setWeeklyDiscount] = useState(0)
 
   // Payouts listing state (for Tab 1 & Tab 2)
   const [payouts, setPayouts] = useState([])
@@ -49,6 +51,22 @@ export default function FinancePage() {
     try {
       const data = await getFinanceSummary()
       setSummary(data)
+
+      // Calculate total weekly discount absorbed by platform
+      const weekStart = new Date()
+      weekStart.setDate(weekStart.getDate() - 7)
+      weekStart.setHours(0, 0, 0, 0)
+      
+      const { data: discountOrders, error: discountError } = await supabase
+        .from('orders')
+        .select('discount_amount')
+        .eq('status', 'delivered')
+        .gte('created_at', weekStart.toISOString())
+
+      if (!discountError && discountOrders) {
+        const total = discountOrders.reduce((sum, o) => sum + Number(o.discount_amount || 0), 0)
+        setWeeklyDiscount(total)
+      }
     } catch (err) {
       console.error('Failed to load finance summary:', err)
       toast.error('Failed to update financial KPI balances.')
@@ -163,7 +181,7 @@ export default function FinancePage() {
       </div>
 
       {/* ─── Financial KPI Row ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Paid Out */}
         <Card className="border-l-4 border-l-green-500">
           <div className="flex items-center justify-between">
@@ -217,6 +235,25 @@ export default function FinancePage() {
             </div>
             <div className="p-3 bg-blue-50 rounded-full text-blue-600">
               <Landmark className="w-6 h-6" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Offer Cost Absorbed (Weekly) */}
+        <Card className="border-l-4 border-l-red-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-secondary font-semibold uppercase tracking-wide">Weekly Offer Cost</p>
+              {summaryLoading ? (
+                <Skeleton className="h-8 w-28 mt-2" />
+              ) : (
+                <h3 className="text-2xl font-bold text-on-surface mt-1">
+                  {formatCurrency(weeklyDiscount)}
+                </h3>
+              )}
+            </div>
+            <div className="p-3 bg-red-50 rounded-full text-red-600">
+              <BadgeAlert className="w-6 h-6" />
             </div>
           </div>
         </Card>

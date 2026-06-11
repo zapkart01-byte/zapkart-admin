@@ -32,18 +32,18 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Subscribes to Firebase auth state changes on mount
+  // Subscribes to Supabase auth state changes on mount
   useEffect(() => {
-    const unsubscribe = onAuthChange(async (firebaseUser) => {
+    const unsubscribe = onAuthChange(async (supabaseUser) => {
       try {
-        if (firebaseUser) {
-          // Fetches admin profile when Firebase user is authenticated
-          const profile = await fetchAdminProfile(firebaseUser.email)
-          setUser(firebaseUser)
+        if (supabaseUser) {
+          // Fetches admin profile when Supabase user is authenticated
+          const profile = await fetchAdminProfile(supabaseUser.email)
+          setUser(supabaseUser)
           setAdminProfile(profile)
           setError(null)
         } else {
-          // Clears state when no Firebase user is present
+          // Clears state when no Supabase user is present
           setUser(null)
           setAdminProfile(null)
         }
@@ -67,11 +67,11 @@ export function AuthProvider({ children }) {
     setLoading(true)
     setError(null)
     try {
-      const { user: firebaseUser, adminProfile: profile } =
+      const { user: supabaseUser, adminProfile: profile } =
         await loginWithEmail(email, password)
-      setUser(firebaseUser)
+      setUser(supabaseUser)
       setAdminProfile(profile)
-      return { user: firebaseUser, adminProfile: profile }
+      return { user: supabaseUser, adminProfile: profile }
     } catch (err) {
       setError(err.message)
       throw err

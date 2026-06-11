@@ -56,3 +56,18 @@ export async function getNotificationById(id) {
   if (error) throw new Error(`Failed to fetch notification: ${error.message}`)
   return data
 }
+
+// Sends a notification to a specific user via backend API
+export async function sendUserNotification(userId, data, adminId) {
+  const response = await authenticatedFetch('/notifications/send', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, ...data, adminId }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(errorData.message || 'Failed to send notification')
+  }
+
+  return response.json()
+}

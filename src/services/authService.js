@@ -91,3 +91,16 @@ export async function authenticatedFetch(url, options = {}) {
   })
 }
 
+// Exact PRD-specified names for auth operations
+export async function loginAdmin(email, password) {
+  return loginWithEmail(email, password)
+}
+
+export async function logoutAdmin() {
+  return logout()
+}
+
+export async function getCurrentAdmin() {
+  return getCurrentUser()
+}
+

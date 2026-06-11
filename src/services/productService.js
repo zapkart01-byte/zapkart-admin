@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { queryWithTimeout } from '../utils/queryWithTimeout'
+import { sendUserNotification } from './notificationService'
 
 /**
  * ZapKart Product Management Service
@@ -145,5 +146,61 @@ export async function getProductsAboveMRP() {
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(`Failed to fetch products above MRP: ${error.message}`)
+  return data
+}
+
+// Logs an audit entry for product image approval
+export async function approveProductImage(id, adminId) {
+  const { error } = await supabase.from('audit_log').insert({
+    admin_id: adminId,
+    action: 'APPROVE_PRODUCT_IMAGE',
+    target_type: 'product',
+    target_id: id,
+    old_value: null,
+    new_value: { approved: true },
+  })
+
+  if (error) throw new Error(`Failed to log product image approval: ${error.message}`)
+  return true
+}
+
+// Rejects a product image, clears it, flags the product, and notifies the store owner
+export async function rejectProductImage(id, storeId, productName, adminId) {
+  const { data, error } = await supabase
+    .from('products')
+    .update({
+      image_url: null,
+      image_urls: [],
+      is_flagged: true
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw new Error(`Failed to reject product image: ${error.message}`)
+
+  await supabase.from('audit_log').insert({
+    admin_id: adminId,
+    action: 'REJECT_PRODUCT_IMAGE',
+    target_type: 'product',
+    target_id: id,
+    old_value: null,
+    new_value: { image_url: null, is_flagged: true },
+  })
+
+  try {
+    await sendUserNotification(
+      storeId,
+      {
+        title: 'Product Image Rejected',
+        body: `The image for your product "${productName}" has been rejected because it does not comply with quality guidelines. Please upload a new image.`,
+        type: 'product_image_rejection',
+      },
+      adminId
+    )
+  } catch (err) {
+    console.error('Failed to send rejection push notification:', err)
+  }
+
   return data
 }

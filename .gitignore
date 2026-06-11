@@ -38,3 +38,22 @@ testsprite_tests\tmp\config.json
 google-services*.json
 google-services (zapkart-customer).json
 
+# Exclude ALL .env variants (secrets)
+.env
+.env.*
+!.env.example
+
+# Exclude Firebase & service account credentials
+*firebase*.json
+service-account*.json
+*-credentials.json
+*-key.json
+
+# Exclude diagnostic/temp scripts
+scripts/check-*.js
+scripts/get-*.js
+scripts/debug-*.js
+
+# Exclude OS artifacts
+.DS_Store
+Thumbs.db

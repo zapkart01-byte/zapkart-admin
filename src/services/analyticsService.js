@@ -72,7 +72,7 @@ export async function getCategoryBreakdown() {
 
   // Aggregates revenue by store category with Indian grocery categories
   const categories = {}
-  const validCategories = ['Dairy', 'Snacks', 'Vegetables', 'Beverages', 'Staples']
+  const validCategories = ['Dairy', 'Vegetables', 'Fruits', 'Snacks', 'Beverages', 'Staples']
 
   for (const order of data) {
     const category = order.stores?.store_type || 'Others'
@@ -138,7 +138,7 @@ function groupByPeriod(data, period, mode = 'revenue') {
   return Object.values(groups)
 }
 
-const CATEGORY_LABELS = ['Dairy', 'Snacks', 'Vegetables', 'Beverages', 'Staples', 'Others']
+const CATEGORY_LABELS = ['Dairy', 'Vegetables', 'Fruits', 'Snacks', 'Beverages', 'Staples', 'Others']
 
 // Builds zero-value chart series so charts render when no orders exist yet
 export function buildEmptyChartSeries(period = 'daily', pointCount = 7) {

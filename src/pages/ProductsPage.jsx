@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Search, Filter, Flag, EyeOff, RefreshCw,
-  AlertTriangle, Package, ChevronRight, Store, Tag, Plus,
+  AlertTriangle, Package, ChevronRight, Store, Tag, Plus, Check, X,
 } from 'lucide-react'
-import { getProducts, createProduct } from '../services/productService'
-import { flagProduct, removeProduct } from '../services/productService'
+import { getProducts, createProduct, flagProduct, removeProduct, approveProductImage, rejectProductImage } from '../services/productService'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../context/AuthContext'
 import { formatCurrency, truncateText } from '../utils/formatters'
@@ -61,6 +60,11 @@ export default function ProductsPage() {
   const [productStock, setProductStock] = useState('10')
   const [productCostPrice, setProductCostPrice] = useState('')
 
+  // Image Review state (Phase 6)
+  const [imageReviewProducts, setImageReviewProducts] = useState([])
+  const [imageReviewLoading, setImageReviewLoading] = useState(true)
+  const [imageActionLoading, setImageActionLoading] = useState(null) // productId being actioned
+
   const searchDebounce = useRef(null)
 
   // Loads store and category dropdown options from Supabase
@@ -74,6 +78,29 @@ export default function ProductsPage() {
       setCategories(catData || [])
     }
     loadFilters()
+  }, [])
+
+  // Fetches products that have custom images uploaded by stores (for moderation)
+  const fetchImageReviewProducts = useCallback(async () => {
+    setImageReviewLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*, stores:store_id(id, store_name)')
+        .not('image_url', 'is', null)
+        .eq('is_flagged', false)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false })
+        .limit(50)
+
+      if (!error && data) {
+        setImageReviewProducts(data)
+      }
+    } catch (err) {
+      console.error('Failed to load image review queue:', err)
+    } finally {
+      setImageReviewLoading(false)
+    }
   }, [])
 
   // Fetches paginated products from Supabase with current filters applied
@@ -106,6 +133,7 @@ export default function ProductsPage() {
   }, [search, storeFilter, categoryFilter, showOnlyFlagged, showOnlyMRPViolations, page])
 
   useEffect(() => { fetchProducts() }, [fetchProducts])
+  useEffect(() => { fetchImageReviewProducts() }, [fetchImageReviewProducts])
 
   // Reset page to 1 when filters change
   useEffect(() => { setPage(1) }, [search, storeFilter, categoryFilter, showOnlyFlagged, showOnlyMRPViolations])
@@ -184,6 +212,40 @@ export default function ProductsPage() {
     }
   }
 
+  // Handles approve action for a product image
+  const handleApproveImage = async (product) => {
+    setImageActionLoading(product.id)
+    try {
+      await approveProductImage(product.id, user?.id)
+      toast.success(`Image approved for "${product.name}"`)
+      setImageReviewProducts((prev) => prev.filter((p) => p.id !== product.id))
+    } catch (err) {
+      toast.error('Failed to approve image: ' + err.message)
+    } finally {
+      setImageActionLoading(null)
+    }
+  }
+
+  // Handles reject action for a product image
+  const handleRejectImage = async (product) => {
+    setImageActionLoading(product.id)
+    try {
+      await rejectProductImage(
+        product.id,
+        product.stores?.id,
+        product.name,
+        user?.id
+      )
+      toast.success(`Image rejected for "${product.name}". Store owner will be notified.`)
+      setImageReviewProducts((prev) => prev.filter((p) => p.id !== product.id))
+      fetchProducts() // Refresh product list as is_flagged changed
+    } catch (err) {
+      toast.error('Failed to reject image: ' + err.message)
+    } finally {
+      setImageActionLoading(null)
+    }
+  }
+
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -215,6 +277,105 @@ export default function ProductsPage() {
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
+      </div>
+
+      {/* ─── Pending Image Review Section ─── */}
+      <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 bg-amber-50 border-b border-amber-200">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <h2 className="text-sm font-bold text-amber-800 uppercase tracking-wide">
+              Pending Image Review
+            </h2>
+            {!imageReviewLoading && (
+              <span className="text-xs font-bold bg-amber-600 text-white px-2 py-0.5 rounded-full">
+                {imageReviewProducts.length}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={fetchImageReviewProducts}
+            className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-100 transition-colors"
+            title="Refresh image review queue"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {imageReviewLoading ? (
+          <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-48 rounded-xl" />
+            ))}
+          </div>
+        ) : imageReviewProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-secondary">
+            <Check className="w-10 h-10 text-green-500 mb-2" />
+            <p className="text-sm font-semibold text-green-700">All images reviewed</p>
+            <p className="text-xs text-secondary mt-1">No product images awaiting moderation.</p>
+          </div>
+        ) : (
+          <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {imageReviewProducts.map((product) => {
+              const isActioning = imageActionLoading === product.id
+              return (
+                <div
+                  key={product.id}
+                  className="border border-border rounded-xl overflow-hidden bg-surface hover:shadow-md transition-shadow flex flex-col"
+                >
+                  {/* Product image */}
+                  <div className="relative aspect-square bg-gray-100">
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  </div>
+
+                  {/* Product info */}
+                  <div className="p-2.5 flex flex-col gap-1.5 flex-1">
+                    <p className="text-xs font-bold text-on-surface leading-tight line-clamp-2">{product.name}</p>
+                    <p className="text-[10px] text-secondary truncate">{product.stores?.store_name || '—'}</p>
+                    <p className="text-[10px] text-secondary">{product.unit}</p>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-1.5 mt-auto pt-1.5 border-t border-border">
+                      <button
+                        onClick={() => handleApproveImage(product)}
+                        disabled={isActioning}
+                        title="Approve image"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+                      >
+                        {isActioning ? (
+                          <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
+                        OK
+                      </button>
+                      <button
+                        onClick={() => handleRejectImage(product)}
+                        disabled={isActioning}
+                        title="Reject image"
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+                      >
+                        {isActioning ? (
+                          <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <X className="w-3 h-3" />
+                        )}
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Filters */}

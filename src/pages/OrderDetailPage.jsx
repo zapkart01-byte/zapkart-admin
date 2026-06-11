@@ -341,7 +341,7 @@ export default function OrderDetailPage() {
               </p>
               {(address.lat && address.lng) && (
                 <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${address.lat},${address.lng}`}
+                  href={`https://www.openstreetmap.org/?mlat=${address.lat}&mlon=${address.lng}#map=17/${address.lat}/${address.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-brand hover:underline"

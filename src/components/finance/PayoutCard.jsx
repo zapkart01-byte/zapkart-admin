@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
-import { Landmark, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Landmark, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react'
 import { formatCurrency, formatDate } from '../../utils/formatters'
+import { supabase } from '../../services/supabase'
 import Button from '../ui/Button'
 import Card from '../ui/Card'
 import Badge from '../ui/Badge'
@@ -15,10 +16,60 @@ export default function PayoutCard({ payout, onProcess }) {
   const [showProcessForm, setShowProcessForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Live query states for compliance analytics
+  const [offerCost, setOfferCost] = useState(0)
+  const [eventBonus, setEventBonus] = useState(0)
+  const [loadingStats, setLoadingStats] = useState(false)
+
   const isStore = payout.recipient_type === 'store'
   const isPending = payout.status === 'pending'
   const isProcessed = payout.status === 'processed'
   const isFailed = payout.status === 'failed'
+
+  useEffect(() => {
+    if (!payout.recipient_id || !payout.period_start || !payout.period_end) return
+    
+    async function fetchpayoutStats() {
+      setLoadingStats(true)
+      try {
+        if (isStore) {
+          // Fetch absorbed discount amount for this store during the period
+          const { data, error } = await supabase
+            .from('orders')
+            .select('discount_amount')
+            .eq('store_id', payout.recipient_id)
+            .eq('status', 'delivered')
+            .gte('created_at', payout.period_start)
+            .lte('created_at', payout.period_end)
+
+          if (!error && data) {
+            const total = data.reduce((sum, o) => sum + Number(o.discount_amount || 0), 0)
+            setOfferCost(total)
+          }
+        } else {
+          // Fetch rider event bonus incentives during the period
+          const { data, error } = await supabase
+            .from('orders')
+            .select('rider_event_bonus')
+            .eq('rider_id', payout.recipient_id)
+            .eq('status', 'delivered')
+            .gte('created_at', payout.period_start)
+            .lte('created_at', payout.period_end)
+
+          if (!error && data) {
+            const total = data.reduce((sum, o) => sum + Number(o.rider_event_bonus || 0), 0)
+            setEventBonus(total)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch payout card metrics:', err)
+      } finally {
+        setLoadingStats(false)
+      }
+    }
+
+    fetchpayoutStats()
+  }, [isStore, payout.recipient_id, payout.period_start, payout.period_end])
 
   const handleProcessSubmit = async (e) => {
     e.preventDefault()
@@ -112,6 +163,22 @@ export default function PayoutCard({ payout, onProcess }) {
             <div>
               <p className="text-secondary">COD Handover Deduct</p>
               <p className="font-semibold text-secondary">{formatCurrency(payout.cod_deduction || 0)}</p>
+            </div>
+          )}
+          {isStore ? (
+            <div>
+              <p className="text-secondary">Offer Cost (Absorbed)</p>
+              <p className="font-semibold text-green-600">
+                {loadingStats ? '...' : formatCurrency(offerCost)}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-secondary">Rider Event Bonus</p>
+              <p className="font-semibold text-green-600 flex items-center gap-1">
+                {loadingStats ? '...' : formatCurrency(eventBonus)}
+                {eventBonus > 0 && <Sparkles className="w-3 h-3 text-orange-500 fill-orange-500" />}
+              </p>
             </div>
           )}
           <div>

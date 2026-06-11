@@ -16,8 +16,18 @@ export function calculateOrderPricing(cartValue, distanceKm, settings) {
   // Calculates platform commission from cart value
   const commissionEarned = cartValue * settings.commission_rate
 
+  // Select minimum profit based on cart value tiers if available in settings
+  let minProfit = settings.minimum_profit
+  if (settings.min_profit_tier1 !== undefined && settings.min_profit_tier1 !== null) {
+    if (cartValue <= 149) minProfit = settings.min_profit_tier1
+    else if (cartValue <= 249) minProfit = settings.min_profit_tier2
+    else if (cartValue <= 399) minProfit = settings.min_profit_tier3
+    else if (cartValue <= 499) minProfit = settings.min_profit_tier4
+    else minProfit = settings.min_profit_tier5
+  }
+
   // Calculates minimum revenue needed to guarantee platform profit
-  const revenueNeeded = riderPayout + settings.minimum_profit
+  const revenueNeeded = riderPayout + minProfit
 
   // Calculates dynamic delivery fee to ensure minimum profit
   let deliveryFee = revenueNeeded - commissionEarned

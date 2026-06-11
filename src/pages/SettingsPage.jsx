@@ -48,6 +48,14 @@ export default function SettingsPage() {
     rider_acceptance_timeout: 60,
     max_cod_balance_per_rider: 2000,
     store_cancellation_penalty: 100,
+    platform_markup_per_item: 1,
+    bonus_event_order: 5,
+    offer_budget_daily: 1000,
+    min_profit_tier1: 12,
+    min_profit_tier2: 14,
+    min_profit_tier3: 15,
+    min_profit_tier4: 10,
+    min_profit_tier5: 8,
   })
 
   // Fetch settings
@@ -72,6 +80,14 @@ export default function SettingsPage() {
         rider_acceptance_timeout: Number(data.rider_acceptance_timeout) || 60,
         max_cod_balance_per_rider: Number(data.max_cod_balance_per_rider) || 2000,
         store_cancellation_penalty: Number(data.store_cancellation_penalty) || 100,
+        platform_markup_per_item: data.platform_markup_per_item !== null && data.platform_markup_per_item !== undefined ? Number(data.platform_markup_per_item) : 1,
+        bonus_event_order: data.bonus_event_order !== null && data.bonus_event_order !== undefined ? Number(data.bonus_event_order) : 5,
+        offer_budget_daily: data.offer_budget_daily !== null && data.offer_budget_daily !== undefined ? Number(data.offer_budget_daily) : 1000,
+        min_profit_tier1: data.min_profit_tier1 !== null && data.min_profit_tier1 !== undefined ? Number(data.min_profit_tier1) : 12,
+        min_profit_tier2: data.min_profit_tier2 !== null && data.min_profit_tier2 !== undefined ? Number(data.min_profit_tier2) : 14,
+        min_profit_tier3: data.min_profit_tier3 !== null && data.min_profit_tier3 !== undefined ? Number(data.min_profit_tier3) : 15,
+        min_profit_tier4: data.min_profit_tier4 !== null && data.min_profit_tier4 !== undefined ? Number(data.min_profit_tier4) : 10,
+        min_profit_tier5: data.min_profit_tier5 !== null && data.min_profit_tier5 !== undefined ? Number(data.min_profit_tier5) : 8,
       })
     } catch (err) {
       setError(err.message || 'Failed to fetch platform parameters.')
@@ -212,6 +228,20 @@ export default function SettingsPage() {
                   onChange={(e) => handleFieldChange('minimum_order_value', e.target.value)}
                   required
                 />
+                <Input
+                  type="number"
+                  label="Platform Markup per Item (₹)"
+                  value={formData.platform_markup_per_item}
+                  onChange={(e) => handleFieldChange('platform_markup_per_item', e.target.value)}
+                  required
+                />
+                <Input
+                  type="number"
+                  label="Daily Offer Budget Limit (₹)"
+                  value={formData.offer_budget_daily}
+                  onChange={(e) => handleFieldChange('offer_budget_daily', e.target.value)}
+                  required
+                />
               </div>
             </Card>
 
@@ -219,10 +249,10 @@ export default function SettingsPage() {
             <Card className="bg-white">
               <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
                 <MapPin className="w-5 h-5 text-info" />
-                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Rider Delivery Distance Band Payouts</h3>
+                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Rider Delivery Distance Band Payouts & Bonuses</h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Input
                   type="number"
                   label="Under 2 km Band (₹)"
@@ -242,6 +272,59 @@ export default function SettingsPage() {
                   label="Above 4 km Band (₹)"
                   value={formData.rider_payout_above_4km}
                   onChange={(e) => handleFieldChange('rider_payout_above_4km', e.target.value)}
+                  required
+                />
+                <Input
+                  type="number"
+                  label="Rider Event Sale Bonus (₹)"
+                  value={formData.bonus_event_order}
+                  onChange={(e) => handleFieldChange('bonus_event_order', e.target.value)}
+                  required
+                />
+              </div>
+            </Card>
+
+            {/* Minimum Profit Tiered Rules */}
+            <Card className="bg-white">
+              <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
+                <Calculator className="w-5 h-5 text-success" />
+                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Minimum Profit Tiered Rules (₹)</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <Input
+                  type="number"
+                  label="Tier 1 (<= ₹149)"
+                  value={formData.min_profit_tier1}
+                  onChange={(e) => handleFieldChange('min_profit_tier1', e.target.value)}
+                  required
+                />
+                <Input
+                  type="number"
+                  label="Tier 2 (<= ₹249)"
+                  value={formData.min_profit_tier2}
+                  onChange={(e) => handleFieldChange('min_profit_tier2', e.target.value)}
+                  required
+                />
+                <Input
+                  type="number"
+                  label="Tier 3 (<= ₹399)"
+                  value={formData.min_profit_tier3}
+                  onChange={(e) => handleFieldChange('min_profit_tier3', e.target.value)}
+                  required
+                />
+                <Input
+                  type="number"
+                  label="Tier 4 (<= ₹499)"
+                  value={formData.min_profit_tier4}
+                  onChange={(e) => handleFieldChange('min_profit_tier4', e.target.value)}
+                  required
+                />
+                <Input
+                  type="number"
+                  label="Tier 5 (>= ₹500)"
+                  value={formData.min_profit_tier5}
+                  onChange={(e) => handleFieldChange('min_profit_tier5', e.target.value)}
                   required
                 />
               </div>
