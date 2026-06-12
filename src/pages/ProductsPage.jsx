@@ -90,18 +90,29 @@ export default function ProductsPage() {
   const fetchImageReviewProducts = useCallback(async () => {
     setImageReviewLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*, stores:store_id(id, store_name)')
-        .not('image_url', 'is', null)
-        .eq('is_flagged', false)
-        .eq('is_active', true)
-        .order('updated_at', { ascending: false })
-        .limit(50)
+      const [productsRes, logsRes] = await Promise.all([
+        supabase
+          .from('products')
+          .select('*, stores:store_id(id, store_name)')
+          .not('image_url', 'is', null)
+          .eq('is_flagged', false)
+          .eq('is_active', true)
+          .order('updated_at', { ascending: false })
+          .limit(100),
+        supabase
+          .from('audit_log')
+          .select('target_id')
+          .eq('action', 'APPROVE_PRODUCT_IMAGE')
+      ])
 
-      if (!error && data) {
-        setImageReviewProducts(data)
-      }
+      if (productsRes.error) throw productsRes.error
+
+      const approvedProductIds = new Set(logsRes.data?.map(l => l.target_id) || [])
+      const pendingReview = (productsRes.data || []).filter(
+        (product) => !approvedProductIds.has(product.id)
+      )
+
+      setImageReviewProducts(pendingReview.slice(0, 50))
     } catch (err) {
       console.error('Failed to load image review queue:', err)
     } finally {
@@ -119,6 +130,7 @@ export default function ProductsPage() {
         storeId: storeFilter || undefined,
         categoryId: categoryFilter || undefined,
         isFlagged: showOnlyFlagged ? true : undefined,
+        isActive: true,
         page,
         pageSize: PAGE_SIZE,
       })

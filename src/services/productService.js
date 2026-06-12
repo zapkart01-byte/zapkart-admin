@@ -8,7 +8,7 @@ import { sendUserNotification } from './notificationService'
  */
 
 // Fetches paginated products with optional store, category, flagged, and search filters
-export async function getProducts({ storeId, categoryId, isFlagged, search, page = 1, pageSize = 20 } = {}) {
+export async function getProducts({ storeId, categoryId, isFlagged, isActive, search, page = 1, pageSize = 20 } = {}) {
   let query = supabase
     .from('products')
     .select('*, stores:store_id(store_name), categories:category_id(name, commission_rate)', { count: 'exact' })
@@ -24,6 +24,10 @@ export async function getProducts({ storeId, categoryId, isFlagged, search, page
 
   if (isFlagged !== undefined && isFlagged !== null) {
     query = query.eq('is_flagged', isFlagged)
+  }
+
+  if (isActive !== undefined && isActive !== null) {
+    query = query.eq('is_active', isActive)
   }
 
   if (search) {

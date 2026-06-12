@@ -551,7 +551,7 @@ function ProductsTab({ storeId }) {
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getProducts({ storeId, pageSize: 100 }) // Load up to 100 products for review catalog
+      const res = await getProducts({ storeId, isActive: true, pageSize: 100 }) // Load up to 100 products for review catalog
       const items = res.products || []
 
       // Sort: Price Violation (store_price > platform_mrp) first, then by created_at descending
