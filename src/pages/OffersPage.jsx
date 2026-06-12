@@ -307,7 +307,7 @@ export default function OffersPage() {
     setUsageLimit(String(offer.usage_limit || '100'))
     setPerUserLimit(String(offer.per_user_limit || '1'))
     setSelectedCategories(offer.categories || [])
-    setBannerUrl(offer.banner_url || '')
+    setBannerUrl(offer.banner_image_url || '')
     setRiderBonus(offer.rider_gets_event_bonus !== false)
     setShowModal(true)
   }
@@ -380,7 +380,7 @@ export default function OffersPage() {
         usage_limit: activeTab === 'coupons' ? (Number(usageLimit) || null) : null,
         per_user_limit: activeTab === 'coupons' ? (Number(perUserLimit) || 1) : 1,
         categories: (activeTab === 'events' || activeTab === 'flash') ? selectedCategories : null,
-        banner_url: (activeTab === 'events' || activeTab === 'flash') ? bannerUrl : null,
+        banner_image_url: (activeTab === 'events' || activeTab === 'flash') ? bannerUrl : null,
         rider_gets_event_bonus: activeTab === 'events' ? riderBonus : false,
         is_active: editingOffer ? editingOffer.is_active : true,
       }
@@ -624,9 +624,9 @@ export default function OffersPage() {
 
                 {/* Banner / Type Avatar */}
                 <div className="shrink-0 flex items-center justify-center">
-                  {(offer.banner_url) ? (
+                  {(offer.banner_image_url) ? (
                     <img
-                      src={offer.banner_url}
+                      src={offer.banner_image_url}
                       alt={offer.name}
                       className="w-24 h-24 rounded-lg object-cover border border-border shadow-sm"
                     />
