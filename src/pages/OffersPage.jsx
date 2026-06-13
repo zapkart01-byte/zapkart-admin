@@ -302,8 +302,8 @@ export default function OffersPage() {
     
     // Parse timestamps to YYYY-MM-DDTHH:MM
     const parseDateTime = (d) => d ? new Date(d).toISOString().slice(0, 16) : ''
-    setStartDate(parseDateTime(offer.start_date))
-    setEndDate(parseDateTime(offer.end_date))
+    setStartDate(parseDateTime(offer.valid_from))
+    setEndDate(parseDateTime(offer.valid_until))
     setUsageLimit(String(offer.usage_limit || '100'))
     setPerUserLimit(String(offer.per_user_limit || '1'))
     
@@ -382,8 +382,8 @@ export default function OffersPage() {
         discount_value: value,
         min_order_value: Number(minOrderValue) || 0,
         max_discount_cap: Number(maxDiscountCap) || null,
-        start_date: new Date(startDate).toISOString(),
-        end_date: new Date(endDate).toISOString(),
+        valid_from: new Date(startDate).toISOString(),
+        valid_until: new Date(endDate).toISOString(),
         usage_limit: activeTab === 'coupons' ? (Number(usageLimit) || null) : null,
         per_user_limit: activeTab === 'coupons' ? (Number(perUserLimit) || 1) : 1,
         // Map category names back to UUIDs for applies_to_categories column
@@ -617,8 +617,8 @@ export default function OffersPage() {
             const stats = offerOrderStats[offer.id] || { ordersCount: 0, discountSum: 0, customers: new Set() }
             const isPerc = offer.discount_type === 'percentage'
             const discountDisplay = isPerc ? `${offer.discount_value}% Off` : `${formatCurrency(offer.discount_value)} Off`
-            const hasStarted = new Date(offer.start_date) <= new Date()
-            const hasEnded = new Date(offer.end_date) <= new Date()
+            const hasStarted = new Date(offer.valid_from) <= new Date()
+            const hasEnded = new Date(offer.valid_until) <= new Date()
 
             return (
               <div
@@ -660,7 +660,7 @@ export default function OffersPage() {
                       </span>
                     )}
                     {offer.is_active && hasStarted && !hasEnded && (
-                      <CountdownTimer targetDate={offer.end_date} />
+                      <CountdownTimer targetDate={offer.valid_until} />
                     )}
                     {hasEnded && (
                       <span className="text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded-full">Expired</span>
@@ -674,7 +674,7 @@ export default function OffersPage() {
                   </p>
 
                   <div className="flex items-center gap-4 text-[11px] text-slate-500 font-bold">
-                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(offer.start_date)} - {formatDate(offer.end_date)}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(offer.valid_from)} - {formatDate(offer.valid_until)}</span>
                     {(() => {
                       const catNames = (offer.applies_to_categories || []).map(catId => {
                         const found = categoriesList.find(c => c.id === catId)
