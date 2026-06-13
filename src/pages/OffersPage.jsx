@@ -306,7 +306,14 @@ export default function OffersPage() {
     setEndDate(parseDateTime(offer.end_date))
     setUsageLimit(String(offer.usage_limit || '100'))
     setPerUserLimit(String(offer.per_user_limit || '1'))
-    setSelectedCategories(offer.categories || [])
+    
+    // Map applies_to_categories (UUIDs) back to category names
+    const initialSelectedNames = (offer.applies_to_categories || []).map(catId => {
+      const found = categoriesList.find(c => c.id === catId)
+      return found ? found.name : null
+    }).filter(Boolean)
+    setSelectedCategories(initialSelectedNames)
+    
     setBannerUrl(offer.banner_image_url || '')
     setRiderBonus(offer.rider_gets_event_bonus !== false)
     setShowModal(true)
@@ -379,7 +386,10 @@ export default function OffersPage() {
         end_date: new Date(endDate).toISOString(),
         usage_limit: activeTab === 'coupons' ? (Number(usageLimit) || null) : null,
         per_user_limit: activeTab === 'coupons' ? (Number(perUserLimit) || 1) : 1,
-        categories: (activeTab === 'events' || activeTab === 'flash') ? selectedCategories : null,
+        // Map category names back to UUIDs for applies_to_categories column
+        applies_to_categories: (activeTab === 'events' || activeTab === 'flash') 
+          ? selectedCategories.map(name => categoriesList.find(c => c.name === name)?.id).filter(Boolean)
+          : null,
         banner_image_url: (activeTab === 'events' || activeTab === 'flash') ? bannerUrl : null,
         rider_gets_event_bonus: activeTab === 'events' ? riderBonus : false,
         is_active: editingOffer ? editingOffer.is_active : true,
@@ -665,9 +675,17 @@ export default function OffersPage() {
 
                   <div className="flex items-center gap-4 text-[11px] text-slate-500 font-bold">
                     <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-slate-400" /> {formatDate(offer.start_date)} - {formatDate(offer.end_date)}</span>
-                    {offer.categories && offer.categories.length > 0 && (
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">Cats: {offer.categories.join(', ')}</span>
-                    )}
+                    {(() => {
+                      const catNames = (offer.applies_to_categories || []).map(catId => {
+                        const found = categoriesList.find(c => c.id === catId)
+                        return found ? found.name : null
+                      }).filter(Boolean)
+                      return catNames.length > 0 && (
+                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-bold">
+                          Cats: {catNames.join(', ')}
+                        </span>
+                      )
+                    })()}
                     {offer.rider_gets_event_bonus && (
                       <span className="bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-md font-bold">Rider gets ₹5 Bonus</span>
                     )}
